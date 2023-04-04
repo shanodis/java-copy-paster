@@ -1,202 +1,176 @@
-//BANK
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Scanner;
- 
-public class Bank {
-    //Map containing key + value as name and account balance
-    Map<String, Integer> accounts = new HashMap<>();
- 
-    //Withdrawal method checking if user has funds on their account
-    //If yes it allows for money withdrawal. If not throws an exception
-    void withdraw(String user) throws InsufficientFundsException {
-        System.out.println("Wprowadź kwotę wypłaty:");
-        Scanner scanner = new Scanner(System.in);
-        int withdrawal = scanner.nextInt();
-        if (accounts.get(user) >= withdrawal) {
-            System.out.println("Wypłacono " + withdrawal);
-            accounts.put(user, accounts.get(user) - withdrawal);
-            balance(user);
-        }
-        else {
-            throw new InsufficientFundsException();
-        }
+package com.dg_mw.calculator.services;
+
+import com.dg_mw.calculator.dtos.CalculatorOperationResponse;
+
+import java.util.List;
+
+public interface ICalculatorOperationService {
+    CalculatorOperationResponse add(List<Float> numbers);
+    CalculatorOperationResponse subtract(List<Float> numbers);
+    CalculatorOperationResponse multiply(List<Float> numbers);
+    CalculatorOperationResponse divide(List<Float> numbers);
+}
+
+
+
+
+
+
+package com.dg_mw.calculator.services;
+
+import com.dg_mw.calculator.dtos.CalculatorOperationResponse;
+import lombok.AllArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+
+@Service
+@AllArgsConstructor
+public class CalculatorOperationService implements ICalculatorOperationService {
+    private final Logger logger = LogManager.getLogger(CalculatorOperationService.class);
+    @Override
+    public CalculatorOperationResponse add(List<Float> numbers) {
+        logger.info("Called method add");
+        Float result = numbers.stream().reduce(0f, Float::sum);
+        return new CalculatorOperationResponse(result);
     }
- 
-    //Deposit method checking if sum is correct.
-    //If yes it allows user to deposit their money
-    //If not throws an exception
-    void deposit(String user)
-    {
-        System.out.println("Wprowadź kwotę wpłaty:");
-        Scanner scanner = new Scanner(System.in);
-        int deposit = scanner.nextInt();
-        if(deposit < 0) throw new IllegalArgumentException("Wprowadzoną błędną kwotę");
-        System.out.println("Wpłacono " + deposit);
-        accounts.put(user, accounts.get(user) + deposit);
-        balance(user);
+
+    @Override
+    public CalculatorOperationResponse subtract(List<Float> numbers) {
+        logger.info("Called method subtract");
+        Float identity = numbers.remove(0);
+        Float result = numbers.stream().reduce(identity, (partialSum, number) -> partialSum - number);
+        return new CalculatorOperationResponse(result);
     }
- 
-    //Method handling transfer between two available users: Mikołaj and Dominik
-    //Being logged as one of them lets user transfer their money to another
-    //It also has error handling with an exception
-    void transfer(String user) throws Exception {
-        System.out.println("Wprowadź kwotę przelewu:");
-        Scanner scanner = new Scanner(System.in);
-        int transferAmount = scanner.nextInt();
-        if(Objects.equals(user, "Mikołaj") && transferAmount <= accounts.get(user) && transferAmount > 0) {
-            accounts.put("Dominik", accounts.get("Dominik") + transferAmount);
-            accounts.put("Mikołaj", accounts.get("Mikołaj") - transferAmount);
-        }
-        else if (Objects.equals(user, "Dominik") && transferAmount <= accounts.get(user) && transferAmount > 0) {
-            accounts.put("Mikołaj", accounts.get("Mikołaj") + transferAmount);
-            accounts.put("Dominik", accounts.get("Dominik") - transferAmount);
-        }
-        else throw new Exception("Błąd transakcja anulowana");
+
+    @Override
+    public CalculatorOperationResponse multiply(List<Float> numbers) {
+        logger.info("Called method multiply");
+        Float result = numbers.stream().reduce(1f, (partialSum, number) -> partialSum * number);
+        return new CalculatorOperationResponse(result);
     }
- 
-    //Simple method for checking user's account balance
-    void balance(String user) {
-        System.out.println("Twój stan konta to: " + accounts.get(user));
-    }
- 
-    public static void main(String[] args) throws Exception {
-        Bank bank = new Bank();
-        bank.accounts.put("Mikołaj", 1000);
-        bank.accounts.put("Dominik", 2000);
-        while(true) {
-            System.out.println("Wybierz użytkownika: 'Mikołaj' lub 'Dominik'");
-            Scanner pickUser = new Scanner(System.in);
-            String user = pickUser.nextLine();
-            if(Objects.equals(user, "Mikołaj") || Objects.equals(user, "Dominik")){}
-            else {
-                System.out.println("Nie ma takiego użytkownika");
-                return;
-            }
-            System.out.println("Co chcesz zrobić?");
-            System.out.println("1 - Wypłata");
-            System.out.println("2 - Wpłata");
-            System.out.println("3 - Przelew");
-            System.out.println("4 - Stan konta");
-            System.out.println("5 - Wyjście");
-            Scanner scanner = new Scanner(System.in);
-            int choice = scanner.nextInt();
-            if(choice == 1){
-                bank.withdraw(user);
-            }else if(choice == 2){
-                bank.deposit(user);
-            }else if(choice == 3){
-                bank.transfer(user);
-            }else if(choice == 4){
-                bank.balance(user);
-            }else if(choice == 5){
-                break;
-            }else{
-                System.out.println("Wrong input try again.");
-            }
+
+    @Override
+    public CalculatorOperationResponse divide(List<Float> numbers) {
+        logger.info("Called method divide");
+        if (numbers.stream().anyMatch(number -> number == 0f)) {
+            logger.error("Divided by 0");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can't divide by 0!");
         }
+        Float identity = numbers.remove(0);
+        Float result = numbers.stream().reduce(identity, (partialSum, number) -> partialSum / number);
+        return new CalculatorOperationResponse(result);
     }
 }
- 
-//BANK EXCEPTION
-public class InsufficientFundsException extends Exception{
-    public InsufficientFundsException() {
-        super("Brak wystarczających środków na koncie");
+
+
+
+
+package com.dg_mw.calculator.dtos;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class CalculatorOperationResponse {
+    private Float result;
+}
+
+
+
+
+package com.dg_mw.calculator.controllers;
+
+import com.dg_mw.calculator.dtos.CalculatorOperationResponse;
+import com.dg_mw.calculator.services.CalculatorOperationService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@Validated
+@RestController
+@AllArgsConstructor
+@RequestMapping("calculator-operations")
+public class CalculatorOperationController {
+    private CalculatorOperationService calculatorOperationsService;
+
+    @GetMapping("/add")
+    public CalculatorOperationResponse add(
+            @Valid
+            @NotNull
+            @Size(min = 2, message = "Provide at least two numbers")
+            @RequestParam(name = "numbers")
+            List<Float> numbers
+    ) {
+        return this.calculatorOperationsService.add(numbers);
+    }
+
+    @GetMapping("/subtract")
+    public CalculatorOperationResponse subtract(
+            @Valid
+            @NotNull
+            @Size(min = 2, message = "Provide at least two numbers")
+            @RequestParam(name = "numbers")
+            List<Float> numbers
+    ) {
+        return this.calculatorOperationsService.subtract(numbers);
+    }
+
+    @GetMapping("/multiply")
+    public CalculatorOperationResponse multiply(
+            @Valid
+            @NotNull
+            @Size(min = 2, message = "Provide at least two numbers")
+            @RequestParam(name = "numbers")
+            List<Float> numbers
+    ) {
+        return this.calculatorOperationsService.multiply(numbers);
+    }
+
+    @GetMapping("/divide")
+    public CalculatorOperationResponse divide(
+            @Valid
+            @NotNull
+            @Size(min = 2, message = "Provide at least two numbers")
+            @RequestParam(name = "numbers")
+            List<Float> numbers
+    ) {
+        return this.calculatorOperationsService.divide(numbers);
     }
 }
- 
-//DICE ROLL
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.LinkedList;
-import java.util.Random;
-import java.util.Scanner;
- 
-public class DiceRoll {
-    public static void main(String args[]) throws Exception {
-        LinkedList<Integer> rolls = new LinkedList<>();
-        System.out.print("Wpisz iloma kostkami chcesz rzucić: ");
-        Scanner input = new Scanner(System.in);
-        int numberOfDice = input.nextInt();
-        if(numberOfDice <= 0 || numberOfDice > 100) {
-            throw new Exception("Niepoprawna ilość kości");
-        }
-        Random ranNum = new Random();
- 
-        System.out.print("Wyniki: ");
-        int total = 0;
-        int rand;
- 
-        for (int i = 0; i < numberOfDice; i++) {
-            rand = ranNum.nextInt(6) + 1;
-            total = total + rand;
-            System.out.print(rand);
-            System.out.print(" ");
-            rolls.add(rand);
-        }
-        LocalDateTime dateNow = LocalDateTime.now();
-        DateTimeFormatter dateFormatted = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
-        String formattedDate = dateNow.format(dateFormatted);
-        System.out.println("Suma: " + total);
-        input.close();
-        BufferedWriter writer = new BufferedWriter(new FileWriter("rolls.txt", true));
-        writer.append("Rzut z: " + formattedDate);
-        writer.append(System.lineSeparator());
-        for(Integer num : rolls) {
-            writer.append(num + System.lineSeparator());
-        }
-        writer.append("Suma: " + total);
-        writer.append(System.lineSeparator());
-        writer.close();
-        File file = new File("rolls.txt");
-        Scanner scanner = new Scanner(file);
-        while (scanner.hasNextLine()) {
-            String data = scanner.nextLine();
-            System.out.println(data);
-        }
-    }
-}
- 
-//FILES
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Scanner;
- 
-public class Odczyt {
- 
-    public static void main(String[] args) {
-        ArrayList<Integer> integerArrayList = new ArrayList<>();
-        ArrayList<Integer> prime = new ArrayList<>();
-        try {
-            File myObj = new File("numbers.txt");
-            Scanner myReader = new Scanner(myObj);
-            while (myReader.hasNextLine()) {
-                String data = myReader.nextLine();
-                integerArrayList.add(Integer.valueOf(data));
-                if(isPrimeNumber(Integer.valueOf(data))) {
-                    prime.add(Integer.valueOf(data));
-                };
-            }
-            myReader.close();
-            System.out.println("Liczby całkowite: " + integerArrayList);
-            System.out.println("Liczby pierwsze: " + prime);
-        } catch (FileNotFoundException e) {
-            System.out.println("Nie można znaleźć takiego pliku");
-            e.printStackTrace();
-        }
-    }
- 
-    public static boolean isPrimeNumber(Integer number) {
-        for (int i = 2; i < number; i++) {
-            if (number % i == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
+
+
+
+// log4j2.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level
+%logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="com.example" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Root level="error">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
+
