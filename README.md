@@ -1,1 +1,0 @@
-# java-copy-paster
